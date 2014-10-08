@@ -223,12 +223,12 @@ sub EscapeJS {
 
 Different web servers set different environmental varibles. This
 function must return something suitable for REMOTE_USER. By default,
-just downcase $ENV{'REMOTE_USER'}
+just downcase REMOTE_USER env
 
 =cut
 
 sub WebCanonicalizeInfo {
-    return $ENV{'REMOTE_USER'} ? lc $ENV{'REMOTE_USER'} : $ENV{'REMOTE_USER'};
+    return ENV('REMOTE_USER') ? lc ENV('REMOTE_USER') : ENV('REMOTE_USER');
 }
 
 
@@ -525,8 +525,8 @@ sub IntuitNextPage {
 
     # This includes any query parameters.  Redirect will take care of making
     # it an absolute URL.
-    if ($ENV{'REQUEST_URI'}) {
-        $req_uri = $ENV{'REQUEST_URI'};
+    if (ENV('REQUEST_URI')) {
+        $req_uri = ENV('REQUEST_URI');
 
         # collapse multiple leading slashes so the first part doesn't look like
         # a hostname of a schema-less URI
@@ -807,13 +807,14 @@ sub AttemptPasswordAuthentication {
 
     my $m = $HTML::Mason::Commands::m;
 
+    my $remote_addr = ENV('REMOTE_ADDR');
     unless ( $user_obj->id && $user_obj->IsPassword( $ARGS->{pass} ) ) {
-        $RT::Logger->error("FAILED LOGIN for @{[$ARGS->{user}]} from $ENV{'REMOTE_ADDR'}");
+        $RT::Logger->error("FAILED LOGIN for @{[$ARGS->{user}]} from $remote_addr");
         $m->callback( %$ARGS, CallbackName => 'FailedLogin', CallbackPage => '/autohandler' );
         return (0, HTML::Mason::Commands::loc('Your username or password is incorrect'));
     }
     else {
-        $RT::Logger->info("Successful login for @{[$ARGS->{user}]} from $ENV{'REMOTE_ADDR'}");
+        $RT::Logger->info("Successful login for @{[$ARGS->{user}]} from $remote_addr");
 
         # It's important to nab the next page from the session before we blow
         # the session away
@@ -847,7 +848,7 @@ Load or setup a session cookie for the current user.
 
 sub _SessionCookieName {
     my $cookiename = "RT_SID_" . RT->Config->Get('rtname');
-    $cookiename .= "." . $ENV{'SERVER_PORT'} if $ENV{'SERVER_PORT'};
+    $cookiename .= "." . ENV('SERVER_PORT') if ENV('SERVER_PORT');
     return $cookiename;
 }
 
@@ -902,7 +903,7 @@ sub GetWebURLFromRequest {
 
     my $uri = URI->new( RT->Config->Get('WebURL') );
 
-    if ( defined $ENV{HTTPS} and $ENV{'HTTPS'} eq 'on' ) {
+    if ( defined ENV('HTTPS') and ENV('HTTPS') eq 'on' ) {
         $uri->scheme('https');
     }
     else {
@@ -910,8 +911,8 @@ sub GetWebURLFromRequest {
     }
 
     # [rt3.fsck.com #12716] Apache recommends use of $SERVER_HOST
-    $uri->host( $ENV{'SERVER_HOST'} || $ENV{'HTTP_HOST'} || $ENV{'SERVER_NAME'} );
-    $uri->port( $ENV{'SERVER_PORT'} );
+    $uri->host( ENV('SERVER_HOST') || ENV('HTTP_HOST') || ENV('SERVER_NAME') );
+    $uri->port( ENV('SERVER_PORT') );
     return "$uri"; # stringify to be consistent with WebURL in config
 }
 
@@ -1145,7 +1146,7 @@ sub MobileClient {
     my $self = shift;
 
 
-if (($ENV{'HTTP_USER_AGENT'} || '') =~ /(?:hiptop|Blazer|Novarra|Vagabond|SonyEricsson|Symbian|NetFront|UP.Browser|UP.Link|Windows CE|MIDP|J2ME|DoCoMo|J-PHONE|PalmOS|PalmSource|iPhone|iPod|AvantGo|Nokia|Android|WebOS|S60|Mobile)/io && !$HTML::Mason::Commands::session{'NotMobile'})  {
+if ((ENV('HTTP_USER_AGENT') || '') =~ /(?:hiptop|Blazer|Novarra|Vagabond|SonyEricsson|Symbian|NetFront|UP.Browser|UP.Link|Windows CE|MIDP|J2ME|DoCoMo|J-PHONE|PalmOS|PalmSource|iPhone|iPod|AvantGo|Nokia|Android|WebOS|S60|Mobile)/io && !$HTML::Mason::Commands::session{'NotMobile'})  {
     return 1;
 } else {
     return undef;
@@ -1307,12 +1308,12 @@ sub ValidateWebConfig {
     return if $_has_validated_web_config;
     $_has_validated_web_config = 1;
 
-    my $port = $ENV{SERVER_PORT};
-    my $host = $ENV{HTTP_X_FORWARDED_HOST} || $ENV{HTTP_X_FORWARDED_SERVER}
-            || $ENV{HTTP_HOST}             || $ENV{SERVER_NAME};
+    my $port = ENV('SERVER_PORT');
+    my $host = ENV('HTTP_X_FORWARDED_HOST') || ENV('HTTP_X_FORWARDED_SERVER')
+            || ENV('HTTP_HOST')             || ENV('SERVER_NAME');
     ($host, $port) = ($1, $2) if $host =~ /^(.*?):(\d+)$/;
 
-    if ( $port != RT->Config->Get('WebPort') and not $ENV{'rt.explicit_port'}) {
+    if ( $port != RT->Config->Get('WebPort') and not ENV('rt.explicit_port')) {
         $RT::Logger->warn("The requested port ($port) does NOT match the configured WebPort ($RT::WebPort).  "
                          ."Perhaps you should Set(\$WebPort, $port); in RT_SiteConfig.pm, "
                          ."otherwise your internal links may be broken.");
@@ -1327,10 +1328,10 @@ sub ValidateWebConfig {
     # Unfortunately, there is no reliable way to get the _path_ that was
     # requested at the proxy level; simply disable this warning if we're
     # proxied and there's a mismatch.
-    my $proxied = $ENV{HTTP_X_FORWARDED_HOST} || $ENV{HTTP_X_FORWARDED_SERVER};
-    if ($ENV{SCRIPT_NAME} ne RT->Config->Get('WebPath') and not $proxied) {
-        $RT::Logger->warn("The requested path ($ENV{SCRIPT_NAME}) does NOT match the configured WebPath ($RT::WebPath).  "
-                         ."Perhaps you should Set(\$WebPath, '$ENV{SCRIPT_NAME}'); in RT_SiteConfig.pm, "
+    my $proxied = ENV('HTTP_X_FORWARDED_HOST') || ENV('HTTP_X_FORWARDED_SERVER');
+    if (ENV('SCRIPT_NAME') ne RT->Config->Get('WebPath') and not $proxied) {
+        $RT::Logger->warn("The requested path ('" . ENV('SCRIPT_NAME') . "') does NOT match the configured WebPath ($RT::WebPath).  "
+                         ."Perhaps you should Set(\$WebPath, '" .  ENV('SCRIPT_NAME') . "' in RT_SiteConfig.pm, "
                          ."otherwise your internal links may be broken.");
     }
 }
@@ -1517,9 +1518,9 @@ EOT
     # if there is no Referer header then assume the worst
     return (1,
             "your browser did not supply a Referrer header", # loc
-        ) if !$ENV{HTTP_REFERER};
+        ) if !ENV('HTTP_REFERER');
 
-    my ($whitelisted, $browser, $configs) = IsRefererCSRFWhitelisted($ENV{HTTP_REFERER});
+    my ($whitelisted, $browser, $configs) = IsRefererCSRFWhitelisted(ENV('HTTP_REFERER'));
     return 0 if $whitelisted;
 
     if ( @$configs > 1 ) {
@@ -1804,6 +1805,11 @@ sub GetCustomFieldInputNamePrefix {
     return $prefix;
 }
 
+sub ENV {
+    my $name = shift;
+    return $name ? $ENV{$name} : \%ENV;
+}
+
 package HTML::Mason::Commands;
 
 use vars qw/$r $m %session/;
@@ -2037,7 +2043,7 @@ sub MaybeRedirectToApproval {
         @_
     );
 
-    return unless $ENV{REQUEST_METHOD} eq 'GET';
+    return unless ENV('REQUEST_METHOD') eq 'GET';
 
     my $id = $args{ARGSRef}->{id};
 
