@@ -269,6 +269,10 @@ sub PSGIApp {
     my $mason = sub {
         my $env = shift;
 
+        # mod_fastcgi starts with an empty %ENV, but provides it on each
+        # request.  Pick it up and cache it during the first request.
+        $ENV{PATH} //= $env->{PATH};
+
         {
             my $res = $self->CheckModPerlHandler($env);
             return $self->_psgi_response_cb( $res->finalize ) if $res;
@@ -297,9 +301,7 @@ sub PSGIApp {
 
         my $ret;
         {
-            # XXX: until we get rid of all $ENV stuff.
-            local %ENV = (%ENV, CGI::Emulate::PSGI->emulate_environment($env));
-
+            local %ENV = (%ENV, map { $_ => $env->{$_} } grep { exists $env->{$_} } qw/HTTP_ACCEPT_LANGUAGE REQUEST_METHOD QUERY_STRING/);
             $ret = $h->handle_psgi($env);
         }
 
@@ -309,7 +311,7 @@ sub PSGIApp {
             my $orig_ret = $ret;
             $ret = sub {
                 my $respond = shift;
-                local %ENV = (%ENV, CGI::Emulate::PSGI->emulate_environment($env));
+                local %ENV = (%ENV, map { $_ => $env->{$_} } grep { exists $env->{$_} } qw/HTTP_ACCEPT_LANGUAGE REQUEST_METHOD QUERY_STRING/);
                 $orig_ret->($respond);
             };
         }
