@@ -73,8 +73,6 @@
 % while (my $Value = $Categories->Next) {
 <option value="<% $Value->Name %>"><% $Value->Name %></option>
 % }
-%   } else {
-<input type="text" size="10" class="editcategory" name="<% $paramtag %>-Category" value="" />
 %   }
 </td>
 % }
