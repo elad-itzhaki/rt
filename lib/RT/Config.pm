@@ -982,6 +982,22 @@ our %META;
             Message => "The LogoImageWidth configuration option did not affect display, and has been removed; please remove it from your RT_SiteConfig.pm",
         },
     },
+    Lifecycles => {
+        Type            => 'HASH',
+        PostLoadCheck   => sub {
+            my $self  = shift;
+            if ( RT->SystemUser ) { # in case nodb is set in tests
+                my $queues     = RT::Queues->new( RT->SystemUser );
+                my @lifecycles = $queues->DistinctFieldValues( 'Lifecycle' );
+                my $config     = $self->Get( 'Lifecycles' );
+                for my $lifecycle ( @lifecycles ) {
+                    unless ( $config->{$lifecycle} ) {
+                        RT->Logger->error( qq{lifecycle "$lifecycle" is missing in %Lifecycles config} );
+                    }
+                }
+            }
+        },
+    },
 );
 my %OPTIONS = ();
 my @LOADED_CONFIGS = ();
